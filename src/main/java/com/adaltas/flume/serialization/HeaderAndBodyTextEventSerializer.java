@@ -18,8 +18,11 @@
  */
 package com.adaltas.flume.serialization;
 
+import java.awt.List;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -30,6 +33,8 @@ import org.apache.flume.Event;
 import org.apache.flume.serialization.EventSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import au.com.bytecode.opencsv.CSVWriter;
 
 import com.google.gson.Gson;
 
@@ -52,16 +57,21 @@ public class HeaderAndBodyTextEventSerializer implements EventSerializer {
   private final String COLUMNS_DFLT = null;
   private final String FORMAT = "format";
   private final String FORMAT_DFLT = "NATIVE";
+  private final String DELIMITER = "delimiter";
+  private final String DELIMITER_DFLT = ",";
 
   private final OutputStream out;
+  private CSVWriter csvWriter;
   private final boolean appendNewline;
   private final String columns;
   private final String format;
+  private final String delimiter;
 
   private HeaderAndBodyTextEventSerializer(OutputStream out, Context ctx) {
     this.appendNewline = ctx.getBoolean(APPEND_NEWLINE, APPEND_NEWLINE_DFLT);
     this.columns = ctx.getString(COLUMNS, COLUMNS_DFLT);
     this.format = ctx.getString(FORMAT, FORMAT_DFLT);
+    this.delimiter = ctx.getString(DELIMITER, DELIMITER_DFLT);
     this.out = out;
   }
 
@@ -87,35 +97,59 @@ public class HeaderAndBodyTextEventSerializer implements EventSerializer {
 
   @Override
   public void write(Event e) throws IOException {
-		Map<String,String> originalHeaders = e.getHeaders();
-		Map<String,String> headers;
-		if(this.columns != null){
-			headers = new LinkedHashMap<String,String>();
-			// Keys to keep
-			StringTokenizer tok = new StringTokenizer(this.columns);
-			while(tok.hasMoreTokens()){
-				String key = tok.nextToken();
-				headers.put(key, originalHeaders.get(key));
-			}
-		}else{
-			// If json, we need a copy since we'll add the body
-			headers = originalHeaders;
-		}
-		if(this.format.equals("NATIVE")){
-			out.write((headers + " ").getBytes());
-	    out.write(e.getBody());
-		}else if(this.format.equals("CSV")){
-	    for(Map.Entry<String, String> entry : headers.entrySet()){
-	    	out.write(entry.getValue().getBytes());
-	    	out.write(',');
-	    }
-	    out.write(e.getBody());
-		}else{
-			throw new IOException("Invalid format "+this.format);
-		}
+    Map<String,String> originalHeaders = e.getHeaders();
+    Map<String,String> headers;
+
+    // columns limits which headers are serialized
+    if(this.columns != null) {
+      headers = new LinkedHashMap<String,String>();
+      StringTokenizer tok = new StringTokenizer(this.columns);
+
+      while(tok.hasMoreTokens()){
+        String key = tok.nextToken();
+        headers.put(key, originalHeaders.get(key));
+      }
+    } else {
+      // If json, we need a copy since we'll add the body
+      headers = originalHeaders;
+    }
+
+    if(this.format.equals("NATIVE")) {
+      handleNativeFormat(headers, e);
+    } else if(this.format.equals("CSV")) {
+      handleCsvFormat(headers, e);
+    } else {
+      throw new IOException("Invalid format " + this.format);
+    }
+  }
+
+  protected void handleNativeFormat(Map<String, String>headers, Event event) throws IOException {
+    out.write((headers + " ").getBytes());
+    out.write(event.getBody());
+
     if (appendNewline) {
       out.write('\n');
     }
+  }
+
+  protected void handleCsvFormat(Map<String, String>headers, Event event) throws IOException {
+    if(csvWriter == null) {
+	  csvWriter = new CSVWriter(new OutputStreamWriter(out), this.delimiter.charAt(0));
+    }
+    
+    ArrayList<String> values = new ArrayList<String>();
+    for(Map.Entry<String, String> entry : headers.entrySet()) {
+    	if(entry.getValue() == null) {
+    		values.add("");
+    	} else {
+    		values.add(entry.getValue().toString());
+    	}
+    }
+    
+    values.add(new String(event.getBody(), "UTF-8"));
+
+    csvWriter.writeNext(values.toArray(new String[values.size()]));
+    csvWriter.flush();
   }
 
   @Override

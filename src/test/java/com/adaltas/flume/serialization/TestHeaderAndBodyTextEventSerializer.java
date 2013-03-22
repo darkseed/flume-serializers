@@ -34,134 +34,131 @@ import org.apache.flume.Context;
 import org.apache.flume.event.EventBuilder;
 import org.apache.flume.serialization.EventSerializer;
 import org.apache.flume.serialization.EventSerializerFactory;
+import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 public class TestHeaderAndBodyTextEventSerializer {
 
-  File testFile = new File("src/test/resources/events.txt");
-  File expectedFile = new File("src/test/resources/events.txt");
-
-  @Test
-  public void testWithNewline() throws FileNotFoundException, IOException {
-
-    Map<String, String> headers = new HashMap<String, String>();
-    headers.put("header1", "value1");
-    headers.put("header2", "value2");
-
-    OutputStream out = new FileOutputStream(testFile);
-    EventSerializer serializer =
-        EventSerializerFactory.getInstance("com.adaltas.flume.serialization.HeaderAndBodyTextEventSerializer$Builder", new Context(), out);
-    serializer.afterCreate();
-    serializer.write(EventBuilder.withBody("event 1", Charsets.UTF_8, headers));
-    serializer.write(EventBuilder.withBody("event 2", Charsets.UTF_8, headers));
-    serializer.write(EventBuilder.withBody("event 3", Charsets.UTF_8, headers));
-    serializer.flush();
-    serializer.beforeClose();
-    out.flush();
-    out.close();
-
-    BufferedReader reader = new BufferedReader(new FileReader(testFile));
-    Assert.assertEquals("{header2=value2, header1=value1} event 1", reader.readLine());
-    Assert.assertEquals("{header2=value2, header1=value1} event 2", reader.readLine());
-    Assert.assertEquals("{header2=value2, header1=value1} event 3", reader.readLine());
-    Assert.assertNull(reader.readLine());
-    reader.close();
-
-    FileUtils.forceDelete(testFile);
-  }
-
-  @Test
-  public void testNoNewline() throws FileNotFoundException, IOException {
-
-    Map<String, String> headers = new HashMap<String, String>();
-    headers.put("header1", "value1");
-    headers.put("header2", "value2");
-
-    OutputStream out = new FileOutputStream(testFile);
-    Context context = new Context();
-    context.put("appendNewline", "false");
-    EventSerializer serializer =
-        EventSerializerFactory.getInstance("com.adaltas.flume.serialization.HeaderAndBodyTextEventSerializer$Builder", context, out);
-    serializer.afterCreate();
-    serializer.write(EventBuilder.withBody("event 1\n", Charsets.UTF_8, headers));
-    serializer.write(EventBuilder.withBody("event 2\n", Charsets.UTF_8, headers));
-    serializer.write(EventBuilder.withBody("event 3\n", Charsets.UTF_8, headers));
-    serializer.flush();
-    serializer.beforeClose();
-    out.flush();
-    out.close();
-
-    BufferedReader reader = new BufferedReader(new FileReader(testFile));
-    Assert.assertEquals("{header2=value2, header1=value1} event 1", reader.readLine());
-    Assert.assertEquals("{header2=value2, header1=value1} event 2", reader.readLine());
-    Assert.assertEquals("{header2=value2, header1=value1} event 3", reader.readLine());
-    Assert.assertNull(reader.readLine());
-    reader.close();
-
-    FileUtils.forceDelete(testFile);
-  }
-
-  @Test
-  public void testCSV() throws FileNotFoundException, IOException {
+	static File testFile = new File("src/test/resources/events.txt");
+	
+	public void serializeWithContext(Context context, boolean withNewline, int numHeaders) throws IOException {
 		Map<String, String> headers = new HashMap<String, String>();
-		headers.put("header1", "value1");
-		headers.put("header2", "value2");
-		
+		for(int i = 1; i < numHeaders + 1; i++) {
+			headers.put("header" + i, "value" + i);
+		}
+
 		OutputStream out = new FileOutputStream(testFile);
-		Context context = new Context();
-		context.put("format", "CSV");
 		EventSerializer serializer =
-		    EventSerializerFactory.getInstance("com.adaltas.flume.serialization.HeaderAndBodyTextEventSerializer$Builder", context, out);
+				EventSerializerFactory.getInstance("com.adaltas.flume.serialization.HeaderAndBodyTextEventSerializer$Builder", context, out);
 		serializer.afterCreate();
-		serializer.write(EventBuilder.withBody("event 1", Charsets.UTF_8, headers));
-		serializer.write(EventBuilder.withBody("event 2", Charsets.UTF_8, headers));
-		serializer.write(EventBuilder.withBody("event 3", Charsets.UTF_8, headers));
+		serializer.write(EventBuilder.withBody("event 1" + (withNewline ? "\n" : ""), Charsets.UTF_8, headers));
+		serializer.write(EventBuilder.withBody("event 2" + (withNewline ? "\n" : ""), Charsets.UTF_8, headers));
+		serializer.write(EventBuilder.withBody("event 3" + (withNewline ? "\n" : ""), Charsets.UTF_8, headers));
 		serializer.flush();
 		serializer.beforeClose();
 		out.flush();
 		out.close();
+	}
+	
+	@Before
+	public void removeTestFileBefore() throws IOException {
+		if(testFile.exists()) {
+			FileUtils.forceDelete(testFile);
+		}
+	}
+	
+	@AfterClass
+	public static void removeTestFileAfterClass() throws IOException {
+		if(testFile.exists()) {
+			FileUtils.forceDelete(testFile);
+		}
+	}
+
+	@Test
+	public void testWithNewline() throws FileNotFoundException, IOException {
+		serializeWithContext(new Context(), false, 2);
 		
 		BufferedReader reader = new BufferedReader(new FileReader(testFile));
-		Assert.assertEquals("value2,value1,event 1", reader.readLine());
-		Assert.assertEquals("value2,value1,event 2", reader.readLine());
-		Assert.assertEquals("value2,value1,event 3", reader.readLine());
+		Assert.assertEquals("{header2=value2, header1=value1} event 1", reader.readLine());
+		Assert.assertEquals("{header2=value2, header1=value1} event 2", reader.readLine());
+		Assert.assertEquals("{header2=value2, header1=value1} event 3", reader.readLine());
 		Assert.assertNull(reader.readLine());
 		reader.close();
-		
-		FileUtils.forceDelete(testFile);
-  }
+	}
 
-  @Test
-  public void testCSVAndColumns() throws FileNotFoundException, IOException {
-		Map<String, String> headers = new HashMap<String, String>();
-		headers.put("header1", "value1");
-		headers.put("header2", "value2");
-		headers.put("header3", "value3");
+	@Test
+	public void testNoNewline() throws FileNotFoundException, IOException {
+		Context context = new Context();
+		context.put("appendNewline", "false");
+		serializeWithContext(context, true, 2);
+	
+		BufferedReader reader = new BufferedReader(new FileReader(testFile));
+		Assert.assertEquals("{header2=value2, header1=value1} event 1", reader.readLine());
+		Assert.assertEquals("{header2=value2, header1=value1} event 2", reader.readLine());
+		Assert.assertEquals("{header2=value2, header1=value1} event 3", reader.readLine());
+		Assert.assertNull(reader.readLine());
+		reader.close();
+	}
+
+	@Test
+	public void testCSV() throws FileNotFoundException, IOException {
+		Context context = new Context();
+		context.put("format", "CSV");
+		serializeWithContext(context, false, 2);
 		
-		OutputStream out = new FileOutputStream(testFile);
+		BufferedReader reader = new BufferedReader(new FileReader(testFile));
+		Assert.assertEquals("\"value2\",\"value1\",\"event 1\"", reader.readLine());
+		Assert.assertEquals("\"value2\",\"value1\",\"event 2\"", reader.readLine());
+		Assert.assertEquals("\"value2\",\"value1\",\"event 3\"", reader.readLine());
+		Assert.assertNull(reader.readLine());
+		reader.close();
+	}
+
+	@Test
+	public void testCSVAndColumns() throws FileNotFoundException, IOException {
 		Context context = new Context();
 		context.put("format", "CSV");
 		context.put("columns", "header3 header2");
-		EventSerializer serializer =
-		    EventSerializerFactory.getInstance("com.adaltas.flume.serialization.HeaderAndBodyTextEventSerializer$Builder", context, out);
-		serializer.afterCreate();
-		serializer.write(EventBuilder.withBody("event 1", Charsets.UTF_8, headers));
-		serializer.write(EventBuilder.withBody("event 2", Charsets.UTF_8, headers));
-		serializer.write(EventBuilder.withBody("event 3", Charsets.UTF_8, headers));
-		serializer.flush();
-		serializer.beforeClose();
-		out.flush();
-		out.close();
+		serializeWithContext(context, false, 3);
 		
 		BufferedReader reader = new BufferedReader(new FileReader(testFile));
-		Assert.assertEquals("value3,value2,event 1", reader.readLine());
-		Assert.assertEquals("value3,value2,event 2", reader.readLine());
-		Assert.assertEquals("value3,value2,event 3", reader.readLine());
+		Assert.assertEquals("\"value3\",\"value2\",\"event 1\"", reader.readLine());
+		Assert.assertEquals("\"value3\",\"value2\",\"event 2\"", reader.readLine());
+		Assert.assertEquals("\"value3\",\"value2\",\"event 3\"", reader.readLine());
 		Assert.assertNull(reader.readLine());
 		reader.close();
+	}
+	
+	@Test
+	public void testCSVAndColumnsThatDoNotExistInTheData() throws FileNotFoundException, IOException {
+		Context context = new Context();
+		context.put("format", "CSV");
+		context.put("columns", "header3 header2 header75");
+		serializeWithContext(context, false, 3);
 		
-		FileUtils.forceDelete(testFile);
-  }
+		BufferedReader reader = new BufferedReader(new FileReader(testFile));
+		Assert.assertEquals("\"value3\",\"value2\",\"\",\"event 1\"", reader.readLine());
+		Assert.assertEquals("\"value3\",\"value2\",\"\",\"event 2\"", reader.readLine());
+		Assert.assertEquals("\"value3\",\"value2\",\"\",\"event 3\"", reader.readLine());
+		Assert.assertNull(reader.readLine());
+		reader.close();
+	}
+
+	@Test
+	public void testCSVWithAlternativeDelimiter() throws FileNotFoundException, IOException {
+		Context context = new Context();
+		context.put("format", "CSV");
+		context.put("delimiter", "\t");
+		serializeWithContext(context, false, 2);
+	
+		BufferedReader reader = new BufferedReader(new FileReader(testFile));
+		Assert.assertEquals("\"value2\"\t\"value1\"\t\"event 1\"", reader.readLine());
+		Assert.assertEquals("\"value2\"\t\"value1\"\t\"event 2\"", reader.readLine());
+		Assert.assertEquals("\"value2\"\t\"value1\"\t\"event 3\"", reader.readLine());
+		Assert.assertNull(reader.readLine());
+		reader.close();
+	}
 
 }
