@@ -83,3 +83,4 @@ Contributors
 ------------
 
 *	David Worms : <https://github.com/wdavidw>
+*   Karl Matthias: <https://github.com/relistan>
