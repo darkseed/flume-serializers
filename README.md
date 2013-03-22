@@ -4,13 +4,23 @@ Flume classes
 
 This project contains utility classes for Flume. You will find :
 
-* The "HeaderAndBodyTextEventSerializer" serializer present in version 1.3 so we could use it in the Cloudera Distribution 4.1.3 (latest version at the time of this writing) which ship Flume 1.2.
+* The "HeaderAndBodyTextEventSerializer" serializer present in
+version 1.3 so we could use it in the Cloudera Distribution 4.1.3
+(latest version at the time of this writing) which ship Flume 1.2.
 * A new "JSONEventSerializer" which write header and body event as JSON lines.
 
 HeaderAndBodyTextEventSerializer
 --------------------------------
 
-This class simply writes the header properties and body of the event to the output stream and appends a newline after each event. The "columns" configuration allows to list and order the columns to write. The "format" configuration accept "NATIVE" and "CSV". In the case of the "CSV" serialization, the fields are space delimited and the implementation is extremely simple without any escaping.
+This class simply writes the header properties and body of the event
+to the output stream and appends a newline after each event. The
+"columns" configuration allows to list and order the columns to
+write. The `format` configuration accept `NATIVE` and `CSV`. In the
+case of the `CSV` serialization, the fields default to being
+comma-delimited. This can be changed using the `delimiter` directive.
+The example below sets the output to be tab-separated. Note that
+only single character delmiters are possible. Strings are quoted and
+escaped by default.
  
 Example
 ```coffee
@@ -29,12 +39,18 @@ a1.sinks.s1.serializer = com.adaltas.flume.serialization.HeaderAndBodyTextEventS
 a1.sinks.s1.serializer.columns = timestamp hostname Facility Severity
 a1.sinks.s1.serializer.format = CSV
 a1.sinks.s1.serializer.appendNewline = true
+a1.sinks.s1.serializer.delimiter = \t
 ```
 
 JSONEventSerializer
 -------------------
 
-This class writes the header properties and body of the event as JSON lines. The body is by default associated with the "body" key. The "columns" configuration allows to list and order the columns to write. It must contains the name of the body key if you wish to write the event body. The "body" configuration is the name of the key associated to the event body.
+This class writes the header properties and body of the event as
+JSON lines. The body is by default associated with the "body" key.
+The "columns" configuration allows to list and order the columns
+to write. It must contains the name of the body key if you wish to
+write the event body. The "body" configuration is the name of the
+key associated to the event body.
 
 Example
 ```coffee
