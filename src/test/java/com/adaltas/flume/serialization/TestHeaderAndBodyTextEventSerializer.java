@@ -43,7 +43,7 @@ public class TestHeaderAndBodyTextEventSerializer {
 
 	static File testFile = new File("src/test/resources/events.txt");
 	
-	public void serializeWithContext(Context context, boolean withNewline, int numHeaders) throws IOException {
+	public void serializeWithContext(Context context, boolean withNewline, int numHeaders, String body) throws IOException {
 		Map<String, String> headers = new HashMap<String, String>();
 		for(int i = 1; i < numHeaders + 1; i++) {
 			headers.put("header" + i, "value" + i);
@@ -56,6 +56,11 @@ public class TestHeaderAndBodyTextEventSerializer {
 		serializer.write(EventBuilder.withBody("event 1" + (withNewline ? "\n" : ""), Charsets.UTF_8, headers));
 		serializer.write(EventBuilder.withBody("event 2" + (withNewline ? "\n" : ""), Charsets.UTF_8, headers));
 		serializer.write(EventBuilder.withBody("event 3" + (withNewline ? "\n" : ""), Charsets.UTF_8, headers));
+		
+		if(body != null) {
+			serializer.write(EventBuilder.withBody(body, Charsets.UTF_8, headers));
+		}
+		
 		serializer.flush();
 		serializer.beforeClose();
 		out.flush();
@@ -78,7 +83,7 @@ public class TestHeaderAndBodyTextEventSerializer {
 
 	@Test
 	public void testWithNewline() throws FileNotFoundException, IOException {
-		serializeWithContext(new Context(), false, 2);
+		serializeWithContext(new Context(), false, 2, null);
 		
 		BufferedReader reader = new BufferedReader(new FileReader(testFile));
 		Assert.assertEquals("{header2=value2, header1=value1} event 1", reader.readLine());
@@ -92,7 +97,7 @@ public class TestHeaderAndBodyTextEventSerializer {
 	public void testNoNewline() throws FileNotFoundException, IOException {
 		Context context = new Context();
 		context.put("appendNewline", "false");
-		serializeWithContext(context, true, 2);
+		serializeWithContext(context, true, 2, null);
 	
 		BufferedReader reader = new BufferedReader(new FileReader(testFile));
 		Assert.assertEquals("{header2=value2, header1=value1} event 1", reader.readLine());
@@ -106,7 +111,7 @@ public class TestHeaderAndBodyTextEventSerializer {
 	public void testCSV() throws FileNotFoundException, IOException {
 		Context context = new Context();
 		context.put("format", "CSV");
-		serializeWithContext(context, false, 2);
+		serializeWithContext(context, false, 2, null);
 		
 		BufferedReader reader = new BufferedReader(new FileReader(testFile));
 		Assert.assertEquals("\"value2\",\"value1\",\"event 1\"", reader.readLine());
@@ -121,7 +126,7 @@ public class TestHeaderAndBodyTextEventSerializer {
 		Context context = new Context();
 		context.put("format", "CSV");
 		context.put("columns", "header3 header2");
-		serializeWithContext(context, false, 3);
+		serializeWithContext(context, false, 3, null);
 		
 		BufferedReader reader = new BufferedReader(new FileReader(testFile));
 		Assert.assertEquals("\"value3\",\"value2\",\"event 1\"", reader.readLine());
@@ -136,7 +141,7 @@ public class TestHeaderAndBodyTextEventSerializer {
 		Context context = new Context();
 		context.put("format", "CSV");
 		context.put("columns", "header3 header2 header75");
-		serializeWithContext(context, false, 3);
+		serializeWithContext(context, false, 3, null);
 		
 		BufferedReader reader = new BufferedReader(new FileReader(testFile));
 		Assert.assertEquals("\"value3\",\"value2\",\"\",\"event 1\"", reader.readLine());
@@ -151,14 +156,20 @@ public class TestHeaderAndBodyTextEventSerializer {
 		Context context = new Context();
 		context.put("format", "CSV");
 		context.put("delimiter", "\t");
-		serializeWithContext(context, false, 2);
+		serializeWithContext(context, false, 2, "\"yay\"");
 	
 		BufferedReader reader = new BufferedReader(new FileReader(testFile));
 		Assert.assertEquals("\"value2\"\t\"value1\"\t\"event 1\"", reader.readLine());
 		Assert.assertEquals("\"value2\"\t\"value1\"\t\"event 2\"", reader.readLine());
 		Assert.assertEquals("\"value2\"\t\"value1\"\t\"event 3\"", reader.readLine());
+		Assert.assertEquals("\"value2\"\t\"value1\"\t\"\"\"yay\"\"\"", reader.readLine());
 		Assert.assertNull(reader.readLine());
 		reader.close();
+	}
+	
+	@Test
+	public void testCSVEscapesQuotesInOutput() throws IOException, FileNotFoundException {
+		
 	}
 
 }
