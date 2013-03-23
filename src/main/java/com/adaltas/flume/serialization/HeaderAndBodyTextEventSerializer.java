@@ -18,12 +18,10 @@
  */
 package com.adaltas.flume.serialization;
 
-import java.awt.List;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.StringTokenizer;

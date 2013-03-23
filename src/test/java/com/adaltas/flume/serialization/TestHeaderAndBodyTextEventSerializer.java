@@ -60,7 +60,6 @@ public class TestHeaderAndBodyTextEventSerializer {
 		if(body != null) {
 			serializer.write(EventBuilder.withBody(body, Charsets.UTF_8, headers));
 		}
-		
 		serializer.flush();
 		serializer.beforeClose();
 		out.flush();
@@ -156,6 +155,21 @@ public class TestHeaderAndBodyTextEventSerializer {
 		Context context = new Context();
 		context.put("format", "CSV");
 		context.put("delimiter", "\t");
+		serializeWithContext(context, false, 2, null);
+	
+		BufferedReader reader = new BufferedReader(new FileReader(testFile));
+		Assert.assertEquals("\"value2\"\t\"value1\"\t\"event 1\"", reader.readLine());
+		Assert.assertEquals("\"value2\"\t\"value1\"\t\"event 2\"", reader.readLine());
+		Assert.assertEquals("\"value2\"\t\"value1\"\t\"event 3\"", reader.readLine());
+		Assert.assertNull(reader.readLine());
+		reader.close();
+	}
+	
+	@Test
+	public void testCSVEscapesQuotesInOutput() throws IOException, FileNotFoundException {
+		Context context = new Context();
+		context.put("format", "CSV");
+		context.put("delimiter", "\t");
 		serializeWithContext(context, false, 2, "\"yay\"");
 	
 		BufferedReader reader = new BufferedReader(new FileReader(testFile));
@@ -164,12 +178,7 @@ public class TestHeaderAndBodyTextEventSerializer {
 		Assert.assertEquals("\"value2\"\t\"value1\"\t\"event 3\"", reader.readLine());
 		Assert.assertEquals("\"value2\"\t\"value1\"\t\"\"\"yay\"\"\"", reader.readLine());
 		Assert.assertNull(reader.readLine());
-		reader.close();
-	}
-	
-	@Test
-	public void testCSVEscapesQuotesInOutput() throws IOException, FileNotFoundException {
-		
+		reader.close();	
 	}
 
 }
