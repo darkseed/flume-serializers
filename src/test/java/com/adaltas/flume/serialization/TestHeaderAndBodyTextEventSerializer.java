@@ -20,38 +20,41 @@ package com.adaltas.flume.serialization;
 
 import com.google.common.base.Charsets;
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.IOException;
-import java.io.OutputStream;
+import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.flume.Context;
 import org.apache.flume.event.EventBuilder;
 import org.apache.flume.serialization.EventSerializer;
 import org.apache.flume.serialization.EventSerializerFactory;
-import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 
 public class TestHeaderAndBodyTextEventSerializer {
 
 	static File testFile = new File("src/test/resources/events.txt");
+	private ByteArrayInputStream storedOutput;
 	
 	public void serializeWithContext(Context context, boolean withNewline, int numHeaders, String body) throws IOException {
+		ByteArrayOutputStream serializedOutput = new ByteArrayOutputStream();
+		
 		Map<String, String> headers = new HashMap<String, String>();
 		for(int i = 1; i < numHeaders + 1; i++) {
 			headers.put("header" + i, "value" + i);
 		}
 
-		OutputStream out = new FileOutputStream(testFile);
 		EventSerializer serializer =
-				EventSerializerFactory.getInstance("com.adaltas.flume.serialization.HeaderAndBodyTextEventSerializer$Builder", context, out);
+				EventSerializerFactory.getInstance(
+						"com.adaltas.flume.serialization.HeaderAndBodyTextEventSerializer$Builder",
+						context,
+						serializedOutput
+				);
 		serializer.afterCreate();
 		serializer.write(EventBuilder.withBody("event 1" + (withNewline ? "\n" : ""), Charsets.UTF_8, headers));
 		serializer.write(EventBuilder.withBody("event 2" + (withNewline ? "\n" : ""), Charsets.UTF_8, headers));
@@ -62,29 +65,17 @@ public class TestHeaderAndBodyTextEventSerializer {
 		}
 		serializer.flush();
 		serializer.beforeClose();
-		out.flush();
-		out.close();
-	}
-	
-	@Before
-	public void removeTestFileBefore() throws IOException {
-		if(testFile.exists()) {
-			FileUtils.forceDelete(testFile);
-		}
-	}
-	
-	@AfterClass
-	public static void removeTestFileAfterClass() throws IOException {
-		if(testFile.exists()) {
-			FileUtils.forceDelete(testFile);
-		}
+		serializedOutput.flush();
+		serializedOutput.close();
+		
+		storedOutput = new ByteArrayInputStream(serializedOutput.toByteArray());
 	}
 
 	@Test
 	public void testWithNewline() throws FileNotFoundException, IOException {
 		serializeWithContext(new Context(), false, 2, null);
 		
-		BufferedReader reader = new BufferedReader(new FileReader(testFile));
+		BufferedReader reader = new BufferedReader(new InputStreamReader(storedOutput));
 		Assert.assertEquals("{header2=value2, header1=value1} event 1", reader.readLine());
 		Assert.assertEquals("{header2=value2, header1=value1} event 2", reader.readLine());
 		Assert.assertEquals("{header2=value2, header1=value1} event 3", reader.readLine());
@@ -98,7 +89,7 @@ public class TestHeaderAndBodyTextEventSerializer {
 		context.put("appendNewline", "false");
 		serializeWithContext(context, true, 2, null);
 	
-		BufferedReader reader = new BufferedReader(new FileReader(testFile));
+		BufferedReader reader = new BufferedReader(new InputStreamReader(storedOutput));
 		Assert.assertEquals("{header2=value2, header1=value1} event 1", reader.readLine());
 		Assert.assertEquals("{header2=value2, header1=value1} event 2", reader.readLine());
 		Assert.assertEquals("{header2=value2, header1=value1} event 3", reader.readLine());
@@ -112,7 +103,7 @@ public class TestHeaderAndBodyTextEventSerializer {
 		context.put("format", "CSV");
 		serializeWithContext(context, false, 2, null);
 		
-		BufferedReader reader = new BufferedReader(new FileReader(testFile));
+		BufferedReader reader = new BufferedReader(new InputStreamReader(storedOutput));
 		Assert.assertEquals("\"value2\",\"value1\",\"event 1\"", reader.readLine());
 		Assert.assertEquals("\"value2\",\"value1\",\"event 2\"", reader.readLine());
 		Assert.assertEquals("\"value2\",\"value1\",\"event 3\"", reader.readLine());
@@ -127,7 +118,7 @@ public class TestHeaderAndBodyTextEventSerializer {
 		context.put("columns", "header3 header2");
 		serializeWithContext(context, false, 3, null);
 		
-		BufferedReader reader = new BufferedReader(new FileReader(testFile));
+		BufferedReader reader = new BufferedReader(new InputStreamReader(storedOutput));
 		Assert.assertEquals("\"value3\",\"value2\",\"event 1\"", reader.readLine());
 		Assert.assertEquals("\"value3\",\"value2\",\"event 2\"", reader.readLine());
 		Assert.assertEquals("\"value3\",\"value2\",\"event 3\"", reader.readLine());
@@ -142,7 +133,7 @@ public class TestHeaderAndBodyTextEventSerializer {
 		context.put("columns", "header3 header2 header75");
 		serializeWithContext(context, false, 3, null);
 		
-		BufferedReader reader = new BufferedReader(new FileReader(testFile));
+		BufferedReader reader = new BufferedReader(new InputStreamReader(storedOutput));
 		Assert.assertEquals("\"value3\",\"value2\",\"\",\"event 1\"", reader.readLine());
 		Assert.assertEquals("\"value3\",\"value2\",\"\",\"event 2\"", reader.readLine());
 		Assert.assertEquals("\"value3\",\"value2\",\"\",\"event 3\"", reader.readLine());
@@ -157,7 +148,7 @@ public class TestHeaderAndBodyTextEventSerializer {
 		context.put("delimiter", "\t");
 		serializeWithContext(context, false, 2, null);
 	
-		BufferedReader reader = new BufferedReader(new FileReader(testFile));
+		BufferedReader reader = new BufferedReader(new InputStreamReader(storedOutput));
 		Assert.assertEquals("\"value2\"\t\"value1\"\t\"event 1\"", reader.readLine());
 		Assert.assertEquals("\"value2\"\t\"value1\"\t\"event 2\"", reader.readLine());
 		Assert.assertEquals("\"value2\"\t\"value1\"\t\"event 3\"", reader.readLine());
@@ -172,7 +163,7 @@ public class TestHeaderAndBodyTextEventSerializer {
 		context.put("delimiter", "\t");
 		serializeWithContext(context, false, 2, "\"yay\"");
 	
-		BufferedReader reader = new BufferedReader(new FileReader(testFile));
+		BufferedReader reader = new BufferedReader(new InputStreamReader(storedOutput));
 		Assert.assertEquals("\"value2\"\t\"value1\"\t\"event 1\"", reader.readLine());
 		Assert.assertEquals("\"value2\"\t\"value1\"\t\"event 2\"", reader.readLine());
 		Assert.assertEquals("\"value2\"\t\"value1\"\t\"event 3\"", reader.readLine());
