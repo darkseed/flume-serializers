@@ -62,11 +62,6 @@ a1.sinks.s1.serializer.body = msg
 a1.sinks.s1.serializer.appendNewline = true
 ```
 
-Download
---------
-
-*   [Version 0.0.1](https://github.com/wdavidw/flume/raw/master/lib/adaltas-flume-0.0.1-SNAPSHOT.jar)
-
 Notes
 -----
 
