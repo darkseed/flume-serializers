@@ -29,12 +29,7 @@ import java.util.StringTokenizer;
 import org.apache.flume.Context;
 import org.apache.flume.Event;
 import org.apache.flume.serialization.EventSerializer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import au.com.bytecode.opencsv.CSVWriter;
-
-import com.google.gson.Gson;
 
 /**
  * This class simply writes the header properties and body of the event to the output stream
@@ -44,9 +39,6 @@ import com.google.gson.Gson;
  * and the implementation is extremely simple without any escaping.
  */
 public class HeaderAndBodyTextEventSerializer implements EventSerializer {
-
-  private final static Logger logger =
-      LoggerFactory.getLogger(HeaderAndBodyTextEventSerializer.class);
 
   // for legacy reasons, by default, append a newline to each event written out
   private final String APPEND_NEWLINE = "appendNewline";
