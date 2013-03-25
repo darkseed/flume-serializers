@@ -29,6 +29,9 @@ import java.util.StringTokenizer;
 import org.apache.flume.Context;
 import org.apache.flume.Event;
 import org.apache.flume.serialization.EventSerializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import au.com.bytecode.opencsv.CSVWriter;
 
 /**
@@ -56,8 +59,12 @@ public class HeaderAndBodyTextEventSerializer implements EventSerializer {
   private final String columns;
   private final String format;
   private final String delimiter;
+  
+  private final static Logger logger =
+		  LoggerFactory.getLogger(HeaderAndBodyTextEventSerializer.class);
 
   private HeaderAndBodyTextEventSerializer(OutputStream out, Context ctx) {
+	logger.debug("Starting up HeaderAndBodyTextEventSerializer");
     this.appendNewline = ctx.getBoolean(APPEND_NEWLINE, APPEND_NEWLINE_DFLT);
     this.columns = ctx.getString(COLUMNS, COLUMNS_DFLT);
     this.format = ctx.getString(FORMAT, FORMAT_DFLT);
@@ -92,6 +99,7 @@ public class HeaderAndBodyTextEventSerializer implements EventSerializer {
 
     // columns limits which headers are serialized
     if(this.columns != null) {
+      logger.debug("Serializing event with columns: " + this.columns);
       headers = new LinkedHashMap<String,String>();
       StringTokenizer tok = new StringTokenizer(this.columns);
 
@@ -124,6 +132,7 @@ public class HeaderAndBodyTextEventSerializer implements EventSerializer {
 
   protected void handleCsvFormat(Map<String, String>headers, Event event) throws IOException {
     if(csvWriter == null) {
+      logger.debug("Creating new csvWriter");
 	  csvWriter = new CSVWriter(new OutputStreamWriter(out), this.delimiter.charAt(0));
     }
     
@@ -137,6 +146,8 @@ public class HeaderAndBodyTextEventSerializer implements EventSerializer {
     }
     
     values.add(new String(event.getBody(), "UTF-8"));
+    
+    logger.debug("Writing event with body: " + event.getBody());
 
     csvWriter.writeNext(values.toArray(new String[values.size()]));
     csvWriter.flush();
@@ -156,5 +167,4 @@ public class HeaderAndBodyTextEventSerializer implements EventSerializer {
     }
 
   }
-
 }
